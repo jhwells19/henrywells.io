@@ -30,9 +30,39 @@
     margin-bottom: 2.5rem;
     font-size: 0.9rem;
   }
-  #menu button {
+  .menu-label {
+    font-size: 1.1rem;
+    color: #888;
+    margin-bottom: 0.4rem;
+    margin-top: 1.5rem;
+  }
+  .menu-label:first-of-type { margin-top: 0; }
+  .diff-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 0.4rem auto;
+    width: 340px;
+  }
+  .diff-row button {
+    flex: 1;
+    padding: 0.75rem 0.25rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    background: transparent;
+    color: #fff;
+    border: 2px solid #fff;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .diff-row button:hover, .diff-row button:focus {
+    background: #fff;
+    color: #111;
+    outline: none;
+  }
+  #menu button.full-btn {
     display: block;
-    width: 280px;
+    width: 340px;
     margin: 0.75rem auto;
     padding: 1rem;
     font-family: 'Courier New', monospace;
@@ -43,7 +73,7 @@
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
   }
-  #menu button:hover, #menu button:focus {
+  #menu button.full-btn:hover, #menu button.full-btn:focus {
     background: #fff;
     color: #111;
     outline: none;
@@ -88,8 +118,14 @@
 <div id="menu">
   <h1>PONG</h1>
   <p class="sub">henrywells.io</p>
-  <button id="btn-1p">1 Player vs AI</button>
-  <button id="btn-2p">2 Players</button>
+  <p class="menu-label">1 Player vs Claude</p>
+  <div class="diff-row">
+    <button id="btn-noob">Noob</button>
+    <button id="btn-pro">Pro</button>
+    <button id="btn-master">Master</button>
+  </div>
+  <p class="menu-label">Local Multiplayer</p>
+  <button class="full-btn" id="btn-2p">2 Players</button>
 </div>
 
 <div id="game-container">
@@ -117,8 +153,15 @@ const BALL_BASE_SPEED = 5;
 const BALL_MAX_SPEED = 9;
 
 let mode = null; // '1p' or '2p'
+let difficulty = 'noob';
 let running = false;
 let animFrame = null;
+
+const AI_SETTINGS = {
+  noob:   { speed: 0.30, reactionZone: 60, errorMargin: 40 },
+  pro:    { speed: 0.55, reactionZone: 25, errorMargin: 15 },
+  master: { speed: 0.80, reactionZone: 8,  errorMargin: 3  },
+};
 
 let ball, paddleL, paddleR, scoreL, scoreR, keys;
 
@@ -164,11 +207,13 @@ function movePaddles() {
     if (keys['ArrowUp']) paddleR.y -= PADDLE_SPEED;
     if (keys['ArrowDown']) paddleR.y += PADDLE_SPEED;
   } else {
-    // AI
+    // AI with difficulty
+    const ai = AI_SETTINGS[difficulty];
     const paddleCenter = paddleR.y + PADDLE_H / 2;
-    const diff = ball.y - paddleCenter;
-    const aiSpeed = PADDLE_SPEED * 0.75;
-    if (Math.abs(diff) > 10) {
+    const target = ball.y + (Math.sin(Date.now() * 0.002) * ai.errorMargin);
+    const diff = target - paddleCenter;
+    const aiSpeed = PADDLE_SPEED * ai.speed;
+    if (Math.abs(diff) > ai.reactionZone) {
       paddleR.y += Math.sign(diff) * Math.min(aiSpeed, Math.abs(diff));
     }
   }
@@ -274,7 +319,7 @@ function endGame(winner) {
   if (animFrame) cancelAnimationFrame(animFrame);
   draw();
 
-  const label = winner === 'left' ? 'Player 1' : (mode === '2p' ? 'Player 2' : 'AI');
+  const label = winner === 'left' ? 'Player 1' : (mode === '2p' ? 'Player 2' : 'Claude');
   ctx.fillStyle = '#fff';
   ctx.font = '48px Courier New';
   ctx.textAlign = 'center';
@@ -283,15 +328,17 @@ function endGame(winner) {
   ctx.fillText('Press Space to play again', canvas.width / 2, canvas.height / 2 + 40);
 }
 
-function startGame(selectedMode) {
+function startGame(selectedMode, diff) {
   mode = selectedMode;
+  if (diff) difficulty = diff;
   menu.style.display = 'none';
   gameContainer.style.display = 'block';
 
   if (mode === '2p') {
     infoEl.textContent = 'Player 1: W / S    Player 2: Arrow Up / Down';
   } else {
-    infoEl.textContent = 'Player 1: W / S    AI controls the right paddle';
+    const labels = { noob: 'Noob', pro: 'Pro', master: 'Master' };
+    infoEl.textContent = 'Player 1: W / S    Claude (' + labels[difficulty] + ') controls the right paddle';
   }
 
   initGame();
@@ -322,7 +369,9 @@ document.addEventListener('keyup', e => {
   keys[e.key] = false;
 });
 
-document.getElementById('btn-1p').addEventListener('click', () => startGame('1p'));
+document.getElementById('btn-noob').addEventListener('click', () => startGame('1p', 'noob'));
+document.getElementById('btn-pro').addEventListener('click', () => startGame('1p', 'pro'));
+document.getElementById('btn-master').addEventListener('click', () => startGame('1p', 'master'));
 document.getElementById('btn-2p').addEventListener('click', () => startGame('2p'));
 document.getElementById('back-btn').addEventListener('click', backToMenu);
 </script>
